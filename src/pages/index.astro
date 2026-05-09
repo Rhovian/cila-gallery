@@ -1,0 +1,85 @@
+---
+import Base from '~/layouts/Base.astro';
+---
+
+<Base title="CILA — Carolina Mato">
+  <main class="min-h-screen">
+    <!-- Top nav -->
+    <nav class="flex items-center justify-between border-b border-ink-800/10 px-10 py-6">
+      <div class="font-serif text-xl font-medium tracking-widest">CILA</div>
+      <div class="flex gap-8 font-sans text-[13px] tracking-wider text-ink-600">
+        <a href="/gallery" class="hover:text-ink-800">Gallery</a>
+        <a href="/about" class="hover:text-ink-800">About</a>
+        <a href="/cv" class="hover:text-ink-800">CV</a>
+        <a href="/contact" class="hover:text-ink-800">Contact</a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="grid min-h-[480px] grid-cols-1 items-center gap-15 px-10 py-20 md:grid-cols-[1fr_1.2fr]">
+      <div>
+        <div class="mb-6 font-sans text-[11px] uppercase tracking-widest text-ink-500">
+          Carolina Mato · Venezuelan Artist
+        </div>
+        <h1 class="mb-7 font-serif text-5xl font-normal leading-[1.05] tracking-tight md:text-6xl">
+          A life in color, memory, and flight.
+        </h1>
+        <p class="mb-10 font-serif text-[17px] italic leading-relaxed text-ink-600">
+          Paintings of Venezuela, of birds, of cities remembered and reimagined —
+          assembled here as a virtual exhibition across eight rooms.
+        </p>
+        <div class="flex items-center gap-4">
+          <a
+            href="/gallery"
+            class="rounded-sm bg-ink-800 px-7 py-3.5 font-sans text-[13px] uppercase tracking-wider text-cream-50 transition-colors hover:bg-ink-700"
+          >
+            Enter the gallery →
+          </a>
+          <a
+            href="/works"
+            class="font-sans text-[13px] text-ink-500 underline underline-offset-4 hover:text-ink-700"
+          >
+            Browse the catalog
+          </a>
+        </div>
+      </div>
+
+      <!-- Hero image placeholder — replace with cycling carousel of real works -->
+      <div class="relative aspect-[4/3] overflow-hidden rounded-sm bg-cream-200">
+        <div
+          class="h-full w-full bg-[#c94a3a]"
+          style="background-image: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45) 100%);"
+        >
+        </div>
+        <div class="absolute bottom-4 left-4 rounded-sm bg-cream-50/90 px-3.5 py-2">
+          <div class="font-serif text-[13px] italic">Flying over the Helicoide #1</div>
+          <div class="mt-0.5 font-sans text-[10px] uppercase tracking-widest text-ink-500">
+            Venezuela Impressions
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pull quote -->
+    <section class="border-t border-ink-800/10 px-20 py-20 text-center">
+      <p class="mx-auto max-w-2xl font-serif text-[22px] italic leading-snug text-ink-700">
+        "I paint what I cannot return to. The cities, the birds, the light over Caracas —
+        they live in me, and in the canvas."
+      </p>
+      <div class="mt-5 font-sans text-[11px] uppercase tracking-widest text-ink-500">
+        — Carolina
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer
+      class="flex items-center justify-between border-t border-ink-800/10 px-10 py-8 font-sans text-[11px] uppercase tracking-wider text-ink-500"
+    >
+      <div>CILA · Carolina Mato · Estudio 2025</div>
+      <div class="flex gap-6">
+        <a href="#">Instagram</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </footer>
+  </main>
+</Base>
