@@ -17,20 +17,32 @@ export interface InitGalleryOptions {
   canvas: HTMLCanvasElement;
   scrollContainer: HTMLElement;
   series: Series;
-  /** Pixels of scroll distance to traverse the entire timeline. Defaults to a per-work figure. */
+  /** Pixels of scroll distance to traverse the entire timeline. Defaults to a per-stop figure. */
   scrollDistance?: number;
+  /**
+   * When true, the camera defaults to a fit-to-screen pose per panel and the
+   * scroll timeline visits each panel as its own stop (multi-panel works step
+   * along the wall instead of being framed as one cluster).
+   */
+  isMobile?: boolean;
 }
 
 export function initGallery({
   canvas,
   scrollContainer,
   series,
-  scrollDistance
+  scrollDistance,
+  isMobile = false
 }: InitGalleryOptions): GalleryHandle {
   setSeries(series);
 
   const layout = layoutSeries(series, ROOM.width);
-  const distance = scrollDistance ?? Math.round((series.works.length + 2) * 760);
+  // Mobile has more stops (one per panel) so the timeline is longer; scale the
+  // total scroll budget accordingly so each stop gets roughly the same scroll.
+  const stops = isMobile
+    ? series.works.reduce((sum, w) => sum + w.images.length, 0)
+    : series.works.length;
+  const distance = scrollDistance ?? Math.round((stops + 2) * 760);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   // Cap DPR — phones report 3x+, which quadruples the fragment load for no
@@ -67,10 +79,11 @@ export function initGallery({
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
-  const trigger = setupCameraChoreography({ camera, layout, scrollContainer, scrollDistance: distance });
+  const trigger = setupCameraChoreography({ camera, layout, scrollContainer, scrollDistance: distance, isMobile });
 
   // Click a painting → glide in to it; click anywhere else (or press Esc, or
-  // scroll — handled in choreography) → pull back out.
+  // scroll — handled in choreography) → pull back out. Disabled on mobile,
+  // where the default pose already fits the painting to the screen.
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const onClick = (e: MouseEvent) => {
@@ -85,8 +98,10 @@ export function initGallery({
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') trigger.clearFocus();
   };
-  canvas.addEventListener('click', onClick);
-  window.addEventListener('keydown', onKeyDown);
+  if (!isMobile) {
+    canvas.addEventListener('click', onClick);
+    window.addEventListener('keydown', onKeyDown);
+  }
 
   let rafId = 0;
   const tick = () => {
@@ -99,8 +114,10 @@ export function initGallery({
   return {
     destroy() {
       cancelAnimationFrame(rafId);
-      canvas.removeEventListener('click', onClick);
-      window.removeEventListener('keydown', onKeyDown);
+      if (!isMobile) {
+        canvas.removeEventListener('click', onClick);
+        window.removeEventListener('keydown', onKeyDown);
+      }
       ro.disconnect();
       trigger.kill();
       scene.traverse((obj) => {

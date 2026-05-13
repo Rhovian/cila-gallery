@@ -129,7 +129,7 @@ function makePlaqueTexture(work: Work): THREE.CanvasTexture {
   const credit = [work.year, work.medium].filter(Boolean).join('   ·   ');
   if (credit) { ctx.fillText(credit, 26, y, maxW); y += 30; }
   if (work.dimensions) { ctx.fillText(work.dimensions, 26, y, maxW); y += 30; }
-  if (work.images.length > 1) ctx.fillText(`${work.images.length} panels`, 26, y, maxW);
+  if (work.images.length > 1) ctx.fillText(`${work.images.length} works`, 26, y, maxW);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;

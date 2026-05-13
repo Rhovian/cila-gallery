@@ -34,7 +34,7 @@ const credit = computed(() => {
   const parts: string[] = [];
   if (work.value.medium) parts.push(work.value.medium);
   if (work.value.dimensions) parts.push(work.value.dimensions);
-  if (work.value.images.length > 1) parts.push(`${work.value.images.length} panels`);
+  if (work.value.images.length > 1) parts.push(`${work.value.images.length} works`);
   return parts.join(' · ');
 });
 
@@ -51,7 +51,7 @@ const body = computed(() => work.value?.story ?? active.value?.body ?? '');
     leave-to-class="opacity-0"
   >
     <div
-      v-if="active && (title || body)"
+      v-if="active && !galleryState.atRest && (title || body)"
       class="pointer-events-none absolute bottom-20 left-12 z-10 max-w-md md:left-12 md:max-w-md max-md:left-6 max-md:right-6 max-md:max-w-none"
     >
       <div

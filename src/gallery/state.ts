@@ -18,6 +18,12 @@ interface GalleryState {
   hasScrolled: boolean;
   /** True while the camera is zoomed in on a clicked painting. */
   focused: boolean;
+  /**
+   * True while the camera is settled at rest on a painting (mobile fit-to-screen
+   * linger). The wall label hides during this beat so the painting fills the
+   * frame cleanly; it returns during approach/slide/disengage.
+   */
+  atRest: boolean;
 }
 
 const state = reactive<GalleryState>({
@@ -25,7 +31,8 @@ const state = reactive<GalleryState>({
   activeMomentIndex: null,
   series: null,
   hasScrolled: false,
-  focused: false
+  focused: false,
+  atRest: false
 });
 
 export const galleryState = readonly(state);
@@ -47,4 +54,8 @@ export function setSeries(series: Series): void {
 
 export function setFocused(focused: boolean): void {
   state.focused = focused;
+}
+
+export function setAtRest(atRest: boolean): void {
+  state.atRest = atRest;
 }

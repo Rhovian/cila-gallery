@@ -18,7 +18,7 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { setProgress, setActiveMoment, setFocused } from './state';
+import { setProgress, setActiveMoment, setFocused, setAtRest } from './state';
 import { ART_CENTER_Y, type SeriesLayout } from './layout';
 import type { PaintingUserData } from './scene';
 
@@ -40,6 +40,7 @@ const D_APPROACH = 1.5;    // walk up to a work, turning to face it
 const D_LINGER = 1.2;      // stand in front of it
 const D_DISENGAGE = 0.5;   // turn back toward the corridor (between works only)
 const D_FINAL_HOLD = 1.6;  // extra dwell on the last work so the tour eases to a close
+const D_PANEL_SLIDE = 0.9; // mobile: slide along the wall from one panel to the next
 
 const FOCUS_MARGIN = 1.12; // a clicked painting fills the frame minus a little air
 const FOCUS_MIN_DIST = 0.6;
@@ -60,13 +61,34 @@ interface Options {
   scrollContainer: HTMLElement;
   /** Total scroll distance in pixels to traverse the whole timeline. */
   scrollDistance: number;
+  /**
+   * Mobile mode: at each work the camera settles into a fit-to-screen close-up
+   * of each panel in turn (sliding along the wall), instead of standing in the
+   * corridor framing the whole cluster. The corridor walk between works is
+   * preserved.
+   */
+  isMobile?: boolean;
+}
+
+/** Camera-to-painting distance that fits the panel in the frame, with a small margin. */
+function fitDistance(panelWidth: number, panelHeight: number, camera: THREE.PerspectiveCamera): number {
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const distH = (panelHeight / 2) / Math.tan(vFov / 2);
+  const distW = (panelWidth / 2) / Math.tan(hFov / 2);
+  return THREE.MathUtils.clamp(
+    Math.max(distH, distW) * FOCUS_MARGIN,
+    FOCUS_MIN_DIST,
+    FOCUS_MAX_DIST
+  );
 }
 
 export function setupCameraChoreography({
   camera,
   layout,
   scrollContainer,
-  scrollDistance
+  scrollDistance,
+  isMobile = false
 }: Options): ChoreographyTrigger {
   // GSAP tweens these plain objects; applyToCamera() reads them each frame.
   const pos = { x: 0, y: EYE_Y, z: 0 };
@@ -78,23 +100,67 @@ export function setupCameraChoreography({
   tl.to(pos, { duration: D_INTRO, y: EYE_Y });
 
   const workStartTimes: number[] = [];
+  // Mobile-only: time intervals (seconds, into the timeline) during which the
+  // camera holds a fit-to-screen pose. The overlay hides while progress falls
+  // inside one of these. Desktop leaves this empty, so the overlay shows as
+  // usual throughout the work segment.
+  const lingerIntervals: Array<[number, number]> = [];
   layout.works.forEach((wl, i) => {
     const isLast = i === layout.works.length - 1;
     const t = tl.duration();
     workStartTimes.push(t);
-    // Approach: move to the viewing spot while turning to face the wall.
-    tl.to(pos, { x: 0, y: EYE_Y, z: wl.centerZ, duration: D_APPROACH, ease: 'power2.inOut' }, t);
-    tl.to(target, { x: wl.wallX, y: ART_CENTER_Y, z: wl.centerZ, duration: D_APPROACH, ease: 'power2.inOut' }, t);
-    // Linger in front of the work — the wall label fades in over this beat. The
-    // last work gets an extra dwell instead of a disengage, so the tour ends
-    // settled on the final painting rather than turning to an empty wall.
-    tl.to(pos, { duration: isLast ? D_LINGER + D_FINAL_HOLD : D_LINGER, y: EYE_Y });
-    if (!isLast) {
-      // Disengage: turn back toward the corridor before walking on.
-      tl.to(target, {
-        x: 0, y: EYE_Y, z: wl.centerZ - CORRIDOR_LOOKAHEAD,
-        duration: D_DISENGAGE, ease: 'power1.inOut'
+    const inward = wl.onLeft ? 1 : -1;
+
+    if (isMobile) {
+      // Approach + each subsequent panel: settle into a fit-to-screen pose,
+      // sliding along the wall (z) so adjacent panels feel like horizontal
+      // scrolling between paintings. Camera height drops to the painting's
+      // centre for a tight, head-on framing rather than eye-level corridor view.
+      wl.panels.forEach((panel, pi) => {
+        const isFirstPanel = pi === 0;
+        const isLastPanel = pi === wl.panels.length - 1;
+        const panelZ = wl.centerZ + panel.offsetZ;
+        const dist = fitDistance(panel.width, panel.height, camera);
+        const camX = wl.wallX + inward * dist;
+        const dur = isFirstPanel ? D_APPROACH : D_PANEL_SLIDE;
+        const tA = tl.duration();
+        tl.to(pos, { x: camX, y: ART_CENTER_Y, z: panelZ, duration: dur, ease: 'power2.inOut' }, tA);
+        tl.to(target, { x: wl.wallX, y: ART_CENTER_Y, z: panelZ, duration: dur, ease: 'power2.inOut' }, tA);
+        const linger = isLastPanel && isLast ? D_LINGER + D_FINAL_HOLD : D_LINGER;
+        const lingerStart = tl.duration();
+        tl.to(pos, { duration: linger, y: ART_CENTER_Y });
+        lingerIntervals.push([lingerStart, tl.duration()]);
       });
+      if (!isLast) {
+        // Disengage: pull back to the corridor at the last panel's z, looking
+        // ahead so the next work's approach is a smooth continuation.
+        const lastPanel = wl.panels[wl.panels.length - 1]!;
+        const exitZ = wl.centerZ + lastPanel.offsetZ;
+        const tD = tl.duration();
+        tl.to(pos, {
+          x: 0, y: EYE_Y, z: exitZ,
+          duration: D_DISENGAGE, ease: 'power1.inOut'
+        }, tD);
+        tl.to(target, {
+          x: 0, y: EYE_Y, z: exitZ - CORRIDOR_LOOKAHEAD,
+          duration: D_DISENGAGE, ease: 'power1.inOut'
+        }, tD);
+      }
+    } else {
+      // Approach: move to the viewing spot while turning to face the wall.
+      tl.to(pos, { x: 0, y: EYE_Y, z: wl.centerZ, duration: D_APPROACH, ease: 'power2.inOut' }, t);
+      tl.to(target, { x: wl.wallX, y: ART_CENTER_Y, z: wl.centerZ, duration: D_APPROACH, ease: 'power2.inOut' }, t);
+      // Linger in front of the work — the wall label fades in over this beat. The
+      // last work gets an extra dwell instead of a disengage, so the tour ends
+      // settled on the final painting rather than turning to an empty wall.
+      tl.to(pos, { duration: isLast ? D_LINGER + D_FINAL_HOLD : D_LINGER, y: EYE_Y });
+      if (!isLast) {
+        // Disengage: turn back toward the corridor before walking on.
+        tl.to(target, {
+          x: 0, y: EYE_Y, z: wl.centerZ - CORRIDOR_LOOKAHEAD,
+          duration: D_DISENGAGE, ease: 'power1.inOut'
+        });
+      }
     }
   });
 
@@ -109,6 +175,8 @@ export function setupCameraChoreography({
     const dwell = i === lastIndex ? D_LINGER + D_FINAL_HOLD : D_LINGER;
     return THREE.MathUtils.clamp((t + D_APPROACH + dwell * 0.5) / total, 0, 1);
   });
+  // Normalize linger intervals to 0–1 progress so onUpdate can test cheaply.
+  const lingerRanges: Array<[number, number]> = lingerIntervals.map(([a, b]) => [a / total, b / total]);
 
   // ---- click-to-focus state (declared before ScrollTrigger.create so the
   // onUpdate closure can reach it safely) ----------------------------------
@@ -149,6 +217,12 @@ export function setupCameraChoreography({
         if (p >= (workOnset[i] ?? 1)) momentIndex = i + 1;
       }
       setActiveMoment(momentIndex);
+
+      let atRest = false;
+      for (const [a, b] of lingerRanges) {
+        if (p >= a && p <= b) { atRest = true; break; }
+      }
+      setAtRest(atRest);
     }
   }) as ChoreographyTrigger;
 
