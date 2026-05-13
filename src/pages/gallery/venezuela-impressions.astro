@@ -1,5 +1,6 @@
 ---
 import Base from '~/layouts/Base.astro';
+import SiteNav from '~/components/SiteNav.astro';
 import { getSeries } from '~/content';
 
 const series = getSeries('venezuela-impressions');
@@ -13,15 +14,7 @@ const paragraphs = (series.statement ?? '')
 
 <Base title={`${series.title} — CILA`} description={series.intro.body}>
   <main class="min-h-screen">
-    <nav class="flex items-center justify-between border-b border-ink-800/10 px-10 py-6">
-      <a href="/" class="font-serif text-xl font-medium tracking-widest">CILA</a>
-      <div class="flex gap-8 font-sans text-[13px] tracking-wider text-ink-600">
-        <a href="/gallery" class="hover:text-ink-800">Exhibitions</a>
-        <a href="/about" class="hover:text-ink-800">About</a>
-        <a href="/cv" class="hover:text-ink-800">CV</a>
-        <a href="/contact" class="hover:text-ink-800">Contact</a>
-      </div>
-    </nav>
+    <SiteNav current="gallery" />
 
     <section class="mx-auto max-w-2xl px-10 py-16 md:py-24">
       <a

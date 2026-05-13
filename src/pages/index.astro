@@ -1,5 +1,6 @@
 ---
 import Base from '~/layouts/Base.astro';
+import SiteNav from '~/components/SiteNav.astro';
 import { allSeries } from '~/content';
 
 // Every artwork image, used as the full-viewport collage backdrop. Pad to a
@@ -23,15 +24,9 @@ const cells = Array.from({ length: 18 }, (_, i) => images[i % images.length]).fi
     <div class="absolute inset-0 bg-gradient-to-b from-ink-900/60 via-ink-900/30 to-ink-900/70"></div>
 
     <!-- Nav -->
-    <nav class="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-10 py-6">
-      <div class="font-serif text-xl font-medium tracking-widest text-cream-50">CILA</div>
-      <div class="flex gap-8 font-sans text-[13px] tracking-wider text-cream-50/75">
-        <a href="/gallery" class="hover:text-cream-50">Exhibitions</a>
-        <a href="/about" class="hover:text-cream-50">About</a>
-        <a href="/cv" class="hover:text-cream-50">CV</a>
-        <a href="/contact" class="hover:text-cream-50">Contact</a>
-      </div>
-    </nav>
+    <div class="absolute inset-x-0 top-0 z-10">
+      <SiteNav variant="light" />
+    </div>
 
     <!-- Hero -->
     <div class="absolute inset-0 z-10 flex flex-col items-center justify-center px-8 text-center">
