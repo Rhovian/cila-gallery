@@ -1,0 +1,9 @@
+---
+import Base from '~/layouts/Base.astro';
+import GalleryRoom from '~/components/GalleryRoom.vue';
+---
+
+<Base title="Room I · Venezuela Impressions — CILA">
+  <!-- client:only because three.js + ScrollTrigger require the browser. -->
+  <GalleryRoom client:only="vue" seriesId="venezuela-impressions" />
+</Base>

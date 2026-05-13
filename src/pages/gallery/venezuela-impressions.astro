@@ -1,0 +1,75 @@
+---
+import Base from '~/layouts/Base.astro';
+import { getSeries } from '~/content';
+
+const series = getSeries('venezuela-impressions');
+if (!series) throw new Error('Series not found: venezuela-impressions');
+
+const paragraphs = (series.statement ?? '')
+  .split(/\n\s*\n/)
+  .map((p) => p.trim())
+  .filter(Boolean);
+---
+
+<Base title={`${series.title} — CILA`} description={series.intro.body}>
+  <main class="min-h-screen">
+    <nav class="flex items-center justify-between border-b border-ink-800/10 px-10 py-6">
+      <a href="/" class="font-serif text-xl font-medium tracking-widest">CILA</a>
+      <div class="flex gap-8 font-sans text-[13px] tracking-wider text-ink-600">
+        <a href="/gallery" class="hover:text-ink-800">Exhibitions</a>
+        <a href="/about" class="hover:text-ink-800">About</a>
+        <a href="/cv" class="hover:text-ink-800">CV</a>
+        <a href="/contact" class="hover:text-ink-800">Contact</a>
+      </div>
+    </nav>
+
+    <section class="mx-auto max-w-2xl px-10 py-16 md:py-24">
+      <a
+        href="/gallery"
+        class="font-sans text-[11px] uppercase tracking-widest text-ink-500 hover:text-ink-700"
+      >
+        ← All exhibitions
+      </a>
+
+      <div class="mt-12 font-sans text-[11px] uppercase tracking-widest text-ink-500">
+        Room {series.number}
+      </div>
+      <h1 class="mt-3 font-serif text-5xl font-normal leading-[1.05] tracking-tight md:text-6xl">
+        {series.title}
+      </h1>
+      <p class="mt-6 font-serif text-[18px] italic leading-relaxed text-ink-600">
+        {series.intro.body}
+      </p>
+
+      {paragraphs.length > 0 && (
+        <div class="mt-12 border-t border-ink-800/10 pt-10">
+          <div class="mb-5 font-sans text-[11px] uppercase tracking-widest text-ink-500">
+            Artist statement
+          </div>
+          <div class="space-y-5 font-serif text-[17px] leading-relaxed text-ink-700">
+            {paragraphs.map((p) => <p>{p}</p>)}
+          </div>
+        </div>
+      )}
+
+      <div class="mt-14">
+        <a
+          href="/gallery/venezuela-impressions/room"
+          class="rounded-sm bg-ink-800 px-7 py-3.5 font-sans text-[13px] uppercase tracking-wider text-cream-50 transition-colors hover:bg-ink-700"
+        >
+          Enter the gallery →
+        </a>
+      </div>
+    </section>
+
+    <footer
+      class="flex items-center justify-between border-t border-ink-800/10 px-10 py-8 font-sans text-[11px] uppercase tracking-wider text-ink-500"
+    >
+      <div>CILA · Carolina Amat · Estudio 2025</div>
+      <div class="flex gap-6">
+        <a href="#">Instagram</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </footer>
+  </main>
+</Base>

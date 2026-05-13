@@ -1,7 +1,7 @@
 {
   "name": "cila-gallery",
   "version": "0.1.0",
-  "description": "Virtual gallery for Carolina Mato (CILA) — scroll-driven 3D exhibition",
+  "description": "Virtual gallery for Carolina Amat (CILA) — scroll-driven 3D exhibition",
   "type": "module",
   "scripts": {
     "dev": "astro dev",

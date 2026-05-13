@@ -1,6 +1,6 @@
 # CILA Gallery
 
-A scroll-driven virtual gallery for Carolina Mato (CILA), built with Astro, Vue, GSAP, and three.js.
+A scroll-driven virtual gallery for Carolina Amat (CILA), built with Astro, Vue, GSAP, and three.js.
 
 ## Stack
 
@@ -145,4 +145,4 @@ Outputs static files to `dist/`. Deploys cleanly to Netlify, Vercel, Cloudflare 
 
 ## License
 
-Private — for Carolina Mato's use. Code by JB.
+Private — for Carolina Amat's use. Code by JB.

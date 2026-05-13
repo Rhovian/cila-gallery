@@ -1,11 +1,12 @@
 // Gallery initializer.
-// Creates the renderer, scene, camera, lights, paintings, and choreography
-// for a given Series. Returns a destroy() handle for SPA-style cleanup.
+// Creates the renderer, scene, lights, painting clusters, and camera
+// choreography for a given Series. Returns a destroy() handle for SPA cleanup.
 
 import * as THREE from 'three';
-import { buildRoom, placePaintings, type PaintingMesh } from './scene';
-import { setupCameraChoreography, type ChoreographyTrigger } from './choreography';
-import { setSeries, focusPainting } from './state';
+import { buildRoom, placeWorks, createSceneResources, disposeSceneResources, ROOM } from './scene';
+import { layoutSeries } from './layout';
+import { setupCameraChoreography } from './choreography';
+import { setSeries } from './state';
 import type { Series } from '~/types';
 
 export interface GalleryHandle {
@@ -16,7 +17,7 @@ export interface InitGalleryOptions {
   canvas: HTMLCanvasElement;
   scrollContainer: HTMLElement;
   series: Series;
-  /** Pixels of scroll distance to traverse the entire timeline. */
+  /** Pixels of scroll distance to traverse the entire timeline. Defaults to a per-work figure. */
   scrollDistance?: number;
 }
 
@@ -24,29 +25,36 @@ export function initGallery({
   canvas,
   scrollContainer,
   series,
-  scrollDistance = 5000
+  scrollDistance
 }: InitGalleryOptions): GalleryHandle {
   setSeries(series);
 
-  // Renderer with proper color management.
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const layout = layoutSeries(series, ROOM.width);
+  const distance = scrollDistance ?? Math.round((series.works.length + 2) * 760);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  // Cap DPR — phones report 3x+, which quadruples the fragment load for no
+  // visible gain on a scene this soft.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
+  // No shadow maps and only a handful of real lights — the spotlight pools,
+  // floor spill and ceiling fixtures are faked with additive quads in scene.ts,
+  // so the fragment shader stays light enough for mobile.
 
-  // Scene with warm fog so the far end of the room recedes naturally.
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1815);
-  scene.fog = new THREE.Fog(0x1a1815, 8, 35);
+  scene.background = new THREE.Color(0x17150f);
+  scene.fog = new THREE.Fog(0x17150f, 7, 34);
 
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.set(0, 1.6, 0);
+  // near/far kept tight (fog hides the far end well before 130 m anyway) so the
+  // depth buffer keeps enough precision to avoid coplanar flicker down the room.
+  const camera = new THREE.PerspectiveCamera(52, 1, 0.2, 130);
 
-  buildRoom(scene);
-  const paintingMeshes = placePaintings(scene, series);
+  const resources = createSceneResources();
+  buildRoom(scene, layout.roomLength, resources);
+  const paintingMeshes = placeWorks(scene, series, layout, resources);
 
-  // Resize handling — canvas fills its parent.
   const resize = () => {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
@@ -59,30 +67,27 @@ export function initGallery({
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
 
-  // Camera choreography (GSAP timeline + ScrollTrigger).
-  const trigger = setupCameraChoreography({
-    camera,
-    series,
-    scrollContainer,
-    scrollDistance
-  }) as ChoreographyTrigger;
+  const trigger = setupCameraChoreography({ camera, layout, scrollContainer, scrollDistance: distance });
 
-  // Click-to-focus via raycasting.
+  // Click a painting → glide in to it; click anywhere else (or press Esc, or
+  // scroll — handled in choreography) → pull back out.
   const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  const handleClick = (e: MouseEvent) => {
+  const ndc = new THREE.Vector2();
+  const onClick = (e: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    const hits = raycaster.intersectObjects<PaintingMesh>(paintingMeshes);
-    if (hits.length > 0 && hits[0]) {
-      focusPainting(hits[0].object.userData.painting);
-    }
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    const hit = raycaster.intersectObjects(paintingMeshes, false)[0];
+    if (hit) trigger.focusOn(hit.object as THREE.Mesh);
+    else trigger.clearFocus();
   };
-  canvas.addEventListener('click', handleClick);
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') trigger.clearFocus();
+  };
+  canvas.addEventListener('click', onClick);
+  window.addEventListener('keydown', onKeyDown);
 
-  // Render loop.
   let rafId = 0;
   const tick = () => {
     trigger.applyToCamera();
@@ -94,17 +99,22 @@ export function initGallery({
   return {
     destroy() {
       cancelAnimationFrame(rafId);
-      canvas.removeEventListener('click', handleClick);
+      canvas.removeEventListener('click', onClick);
+      window.removeEventListener('keydown', onKeyDown);
       ro.disconnect();
       trigger.kill();
-      renderer.dispose();
       scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) {
-          obj.geometry?.dispose();
-          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-          else obj.material?.dispose();
+        if (!(obj instanceof THREE.Mesh)) return;
+        obj.geometry.dispose();
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const m of mats) {
+          const tex = (m as THREE.MeshBasicMaterial).map;
+          if (tex) tex.dispose();
+          m.dispose();
         }
       });
+      disposeSceneResources(resources);
+      renderer.dispose();
     }
   };
 }

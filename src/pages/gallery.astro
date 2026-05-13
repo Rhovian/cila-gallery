@@ -1,9 +1,63 @@
 ---
 import Base from '~/layouts/Base.astro';
-import GalleryRoom from '~/components/GalleryRoom.vue';
+import { allSeries } from '~/content';
 ---
 
-<Base title="Room I · Venezuela Impressions — CILA">
-  <!-- client:only because three.js + ScrollTrigger require the browser. -->
-  <GalleryRoom client:only="vue" seriesId="venezuela-impressions" />
+<Base title="Exhibitions — CILA">
+  <main class="min-h-screen">
+    <nav class="flex items-center justify-between border-b border-ink-800/10 px-10 py-6">
+      <a href="/" class="font-serif text-xl font-medium tracking-widest">CILA</a>
+      <div class="flex gap-8 font-sans text-[13px] tracking-wider text-ink-600">
+        <a href="/about" class="hover:text-ink-800">About</a>
+        <a href="/cv" class="hover:text-ink-800">CV</a>
+        <a href="/contact" class="hover:text-ink-800">Contact</a>
+      </div>
+    </nav>
+
+    <section class="mx-auto max-w-3xl px-10 py-16 md:py-24">
+      <h1 class="font-serif text-5xl font-normal leading-[1.05] tracking-tight md:text-6xl">
+        Exhibitions
+      </h1>
+      <p class="mt-5 font-serif text-[18px] italic leading-relaxed text-ink-600">
+        A virtual exhibition{allSeries.length === 1 ? '' : 's'}, room by room.
+      </p>
+
+      <div class="mt-12 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+        {allSeries.map((s) => {
+          const cover = s.works[0]?.images[0];
+          return (
+            <a href={`/gallery/${s.id}`} class="group block">
+              <div class="aspect-[4/3] overflow-hidden rounded-sm bg-cream-200">
+                {cover && (
+                  <img
+                    src={`/paintings/${s.id}/${cover.file}`}
+                    alt={s.works[0]?.title ?? s.title}
+                    loading="lazy"
+                    class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
+              </div>
+              <div class="mt-4 font-sans text-[11px] uppercase tracking-widest text-ink-500">
+                Room {s.number}
+              </div>
+              <div class="mt-1 font-serif text-2xl italic text-ink-800">{s.title}</div>
+              <div class="mt-2 font-sans text-[12px] uppercase tracking-wider text-ink-500 transition-colors group-hover:text-ink-700">
+                View exhibition →
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+
+    <footer
+      class="flex items-center justify-between border-t border-ink-800/10 px-10 py-8 font-sans text-[11px] uppercase tracking-wider text-ink-500"
+    >
+      <div>CILA · Carolina Amat · Estudio 2025</div>
+      <div class="flex gap-6">
+        <a href="#">Instagram</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </footer>
+  </main>
 </Base>
